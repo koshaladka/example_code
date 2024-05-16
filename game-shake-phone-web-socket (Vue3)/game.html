@@ -1,0 +1,341 @@
+<html>
+	<head>
+		<title> Тряси! </title>		
+		<meta name='viewport' content='width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0' />
+		
+		<style>
+			@font-face {
+				font-family: 'Europa';
+				font-style: normal;
+				font-weight: bold;
+				src: local('Europa'), url('Europe-Bold.ttf') format('truetype'), url('Europe-Bold.otf') format('opentype');
+			}
+			* {
+				margin: 0; padding: center; box-sizing: border-box;
+			}
+		
+			body {
+				height: 100vh;
+				font: 15px Europa, Arial; 
+				font-weight: bold;
+				background-image: url(background.png); 
+				background-position: 0% 0%;
+				background-size: cover;
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+				justify-content: center;
+				background-position-y: bottom;
+    			background-size: cover;
+			}
+			form { background: #000; padding: 0px; position: fixed; top: 50%; width: 100%; }
+			form input { border: 0; padding: 30px; width: 100%; text-align: center; font-size: 25}
+			img { border: 0; padding: 30px; width: 100%; text-align: center; font-size: 25}
+			.btn {
+				position: absolute;
+				bottom: 5%;
+				right: 10%;
+				cursor: pointer;
+				width: 250px;
+			}
+			.container {
+				width: 100%;
+				background-color: rgba(22, 49, 83, 0);
+				/* background-image: url(text-wrapper.png);  */
+				background-position-y: center;
+				background-size: contain;
+				background-repeat: no-repeat;
+				position: relative;
+				padding: 36px 0;
+			}
+
+			.player__name {
+				position: absolute;
+				top: 0;
+				width: 100%;
+				text-align: center;
+				color: #FFFFFF;
+				font-weight: 700;
+				font-size: 6vw;
+    			top: calc(50% - 22vw);
+			}
+
+			p {
+				margin: 0;
+			}
+
+			img {
+				padding: 0;
+			}
+
+			.player__name {
+				position: absolute;
+				top: 0;
+				width: 100%;
+				text-align: center;
+				color: #FFFFFF;
+				font-weight: 700;
+				font-size: 6vw;
+    			top: calc(-90% + 65px);
+			}
+
+			.container__text {
+				text-align: center;
+				font-weight: 700;
+				font-size: 8.5vw;
+				color: white;
+			}
+
+			.container__img {
+				height: 100%;
+				position: absolute;
+				z-index: -1;
+				top: 0;
+				
+			}
+
+			.container__img2 {
+				position: absolute;
+				top: -20px;
+				left: 0;
+				height: 53px;
+				width: 140px;
+			}
+
+			.container__img3 {
+				position: absolute;
+				bottom: -20px;
+				right: 0;
+				height: 53px;
+				width: 104px;
+			}
+		</style>
+		
+		<!-- <script type="text/javascript" src="jquery-1.3.1.min.js"></script> -->
+		<!-- <script type="text/javascript" src="jquery.json-1.3.js"></script> -->
+		<!-- <script type="text/javascript" src="javascript/main.js"></script> -->
+		<script src="/socket.io/socket.io.js"></script>   
+		<script type="text/javascript">
+		
+		var player_ID;
+		var playerName = '';
+		var _player_Name;
+		var socket = io();
+		var finished = false;
+		
+	    function onStart() 
+		{
+			socket.emit('addDisplayPlayer');
+			socket.emit('sendPlayerName', { name: localStorage.getItem("storageName") });
+            document.getElementById("player_Name").innerHTML = playerName;
+			//document.getElementById("repeatbtn").style.display = "none";
+			// alert(localStorage.getItem("storageName"));
+        }
+		
+		function repeatGame()
+		{
+			window.open("index.html", "_self");
+		}
+		
+		function precisionRound(number, precision) 
+		{
+			var factor = Math.pow(10, precision);
+			return Math.round(number * factor) / factor;
+		}
+		
+		function handleMotionEvent(event) 
+		{
+			if (finished) return;
+			/*var x = event.acceleration.x;
+			var y = event.acceleration.y;
+			var z = event.acceleration.z;	*/
+			var x = event.accelerationIncludingGravity.x;
+			var y = event.accelerationIncludingGravity.y;
+			var z = event.accelerationIncludingGravity.z;
+			y = precisionRound(y, 1);
+	
+			document.getElementById("valx").innerHTML = y;	
+			document.getElementById("titleinfo").innerHTML = "ТРЯСИ!";// + y;
+			document.getElementById("player_Name").innerHTML = playerName;
+			if(y > 20 || y < -20)	
+				SendMove();
+		}	
+	
+	
+		function SendMove()
+		{
+			socket.emit('move');
+		};	
+	
+		socket.on('getPlayerName', function(data)
+		{
+			document.getElementById("player_ID").innerHTML = data.id;
+			player_ID =  data.id;
+			playerName = data.name;
+			localStorage.setItem("storageName", data.id);
+			localStorage.setItem("playerName", data.name);
+		});
+		
+		socket.on('overcrowded', function(data)
+		{
+		    document.getElementById("player_Name").innerHTML = "Подождите";
+			document.getElementById("titleinfo").innerHTML = "Слишком много людей :(";
+		});
+
+		socket.on('cantconnect', function(data)
+		{
+		    document.getElementById("player_Name").innerHTML = "Подождите";
+			document.getElementById("titleinfo").innerHTML = "Игра уже идёт";
+		});
+	
+	
+		socket.on('won', function(data)
+		{
+			finished = true;
+			
+			document.getElementById("titleinfo").innerHTML = "";
+			if (_player_Name == data.id)
+				document.getElementById("titleinfo").innerHTML = "Поздравляем, вы победили!!!";
+			else
+				document.getElementById("titleinfo").innerHTML = "Победитель: " + data.id;
+		});
+		
+		socket.on('clearall', function(data)
+		{
+			window.open("index.html", "_self");
+		});	
+		socket.on('disconnect', function(data)
+		{
+			window.open("index.html", "_self");
+		});	
+
+		socket.on('changeName', function(data)
+		{
+			console.log('changeName');
+			console.log(data);
+			console.log(player_ID);
+			if(player_ID == data.id)
+			{
+				_player_Name = data.name;
+				document.getElementById("player_Name").innerHTML = data.name ? data.name : '';
+				playerName = data.name;
+				// alert(data.name);
+			}
+		});	
+
+		socket.on('spawn', function(data)
+		{
+			console.log('spawn');
+			console.log(data);
+			console.log(player_ID);
+			if (data.id === player_ID) {
+				playerName = data.name;
+				document.getElementById("player_Name").innerHTML = data.name ? data.name : '';
+			}
+		});
+  
+		window.onload = onStart;
+		
+		//window.addEventListener("devicemotion", handleMotionEvent, true);
+		</script>		
+    </head>
+	
+    <body onload="onStart()">	
+		<p class="container__text" id="valx" style="font-size:0%; color:white;">valuex</p> 
+		<!-- <img src="start.svg" id="request" class="btn"> -->
+
+		<div class="container" onclick="permission()">
+			<!-- Имя игрока теперь должно быть здесь -->
+			<p id="player_Name" class="player__name"></p>
+			<!-- ----------------------------------- -->
+			<p class="container__text" id="titleinfo"></p>
+			<!-- <p id="player_Name" style="font-size:120%; text-align:center; color:black;"></p> -->
+			<p class="container__text" id="player_ID" style="font-size:0%; color:black;">valuex</p>
+			<img class="container__img" src="./text-wrapper.png" alt="">
+			<img class="container__img2" src="./wave1.svg" alt="">
+			<img class="container__img3" src="./wave2.svg" alt="">
+		</div>
+
+		<script type="text/javascript">
+			function CheckPermission()
+			{
+				if ( typeof( DeviceOrientationEvent ) === "undefined" || 
+					 typeof( DeviceOrientationEvent.requestPermission ) !== "function" ) 
+				{
+					if (window.DeviceOrientationEvent) 
+					{
+						window.addEventListener('devicemotion', handleMotionEvent, true);
+						document.getElementById("titleinfo").innerHTML = "ТРЯСИ!";
+						document.getElementById("player_Name").innerHTML = playerName;
+						var element = document.getElementById("request");
+						//alert(element);
+						element.style.display = "none";
+						//alert("Ok");
+					} 
+					else 
+					{
+						document.getElementById("titleinfo").innerHTML = "Зайдите с другого браузера :(";
+						document.getElementById("player_Name").innerHTML = '';
+						alert("Зайдите с другого браузера :(");
+						window.open("index.html", "_self");
+					}
+				}
+				else
+				{
+					document.getElementById("titleinfo").innerHTML = "Необходимо разрешение вашего браузера.";
+					document.getElementById("player_Name").innerHTML = '';
+				}
+			}
+			function permission()
+			{
+				//alert(typeof( DeviceOrientationEvent.requestPermission ));
+				if ( typeof( DeviceOrientationEvent ) !== "undefined" && 
+					 typeof( DeviceOrientationEvent.requestPermission ) === "function" ) 
+				{
+					// (optional) Do something before API request prompt.
+					DeviceOrientationEvent.requestPermission().then( response => 
+					{
+						//alert(response);
+						// (optional) Do something after API prompt dismissed.
+						if ( response == "granted" ) 
+						{
+							window.addEventListener('devicemotion', handleMotionEvent, true);
+							document.getElementById("titleinfo").innerHTML = "ТРЯСИ!";
+							document.getElementById("player_Name").innerHTML = playerName;
+							var element = document.getElementById("request");
+							//alert(element);
+							element.style.display = "none";
+						}
+						else
+						{
+							document.getElementById("titleinfo").innerHTML = "Зайдите с другого браузера :(";
+							document.getElementById("player_Name").innerHTML = '';
+							alert("Зайдите с другого браузера :(");
+							window.open("index.html", "_self");
+						}
+					})
+					.catch( console.error )
+				}
+				else
+				{
+					if (window.DeviceOrientationEvent) 
+					{
+						//document.getElementById("request").style.display = "none";
+						window.addEventListener('devicemotion', handleMotionEvent, true);
+						document.getElementById("titleinfo").innerHTML = "ТРЯСИ!";
+						document.getElementById("player_Name").innerHTML = localStorage.getItem("playerName") ? localStorage.getItem("playerName") : '';
+						//alert("Ok");
+					} 
+					else 
+					{
+						document.getElementById("titleinfo").innerHTML = "Зайдите с другого браузера :(";
+						document.getElementById("player_Name").innerHTML = '';
+						alert("Зайдите с другого браузера :(");
+						window.open("index.html", "_self");
+					}
+				}
+			}
+			CheckPermission();
+		</script>
+    </body>
+</html>
